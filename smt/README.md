@@ -19,3 +19,7 @@
 (get-model) ; if sat get the example
 (get-info :reason-unknown) ; unknown explaination
 ```
+
+**Misc:**
+
+Printing: `(echo "message")`
