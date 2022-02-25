@@ -49,6 +49,19 @@ class AST:
     def pretty(self):
         return json.dumps(self.to_json(), indent=4)
 
+    def flat(self) -> str:
+        """flatten AST"""
+        if not self.children:
+            return self.token.value
+        if is_quantifier(self.token):
+            return f"({self.token.value} {self.data}; {self.children[0].flat()}; {self.children[1].flat()})"
+        return f"{self.children[0].flat()} {self.token.value} {self.children[1].flat()}"
+
+    def depth(self):
+        if not self.children or is_quantifier(self.token):
+            return 1 if self.token.value != "\\num_of" else 2
+        return max(child.depth() for child in self.children) + 1
+
 
 def error(msg):
     print(f"[ERR] {msg}", file=sys.stderr)
@@ -309,6 +322,132 @@ class Translator:
         return f"{self.header}\n(assert (not {body}))\n(check-sat)"
 
 
+class TranslatorWithSteps:
+    """Show translation steps"""
+
+    def __init__(self):
+        self.num = 0  # denotes unique number for each quantifier
+        self.quants = ""  # used for declaration translations
+        self.quants_handled = set()
+
+    def _define_quantifier(
+        self,
+        name: str,
+        operator: str,
+        quant_var: str,
+        range_func: List[str],
+        body_func: List[str],
+    ):
+        """Create quantifier declaration translations for range and body expressions"""
+        if f"{name}{self.num}" in self.quants_handled:
+            return
+        self.quants_handled.add(f"{name}{self.num}")
+        self.num += 1
+        self.quants += f"\nDECLARATION TRANSLATION OF {name.upper()}"
+        for rf in range_func:
+            self.quants += f"""
+    (define-fun-rec {name}{self.num}
+        ((lo Int) ({quant_var} Int)) Int
+        (ite (< {quant_var} lo)
+            0
+            ({operator}
+                ({name}{self.num} lo (- {quant_var} 1))
+                (ite {rf}
+                    {body_func[0]}
+                    0
+                )
+            )
+        )
+    )
+    """
+        for bf in body_func[1:]:
+            self.quants += f"""
+    (define-fun-rec {name}{self.num}
+        ((lo Int) ({quant_var} Int)) Int
+        (ite (< {quant_var} lo)
+            0
+            ({operator}
+                ({name}{self.num} lo (- {quant_var} 1))
+                (ite {range_func[-1]}
+                    {bf}
+                    0
+                )
+            )
+        )
+    )
+    """
+
+    def _translate_quantifier(self, ast: AST):
+        if not ast.children or not ast.data:
+            assert False, f"invalid quantifier node {ast}"
+
+        name = ast.token.value[1:]
+        base = self.num
+        range_func = self._translate_steps(ast.children[0], base)
+        body_func = self._translate_steps(ast.children[1], base)
+
+        self._define_quantifier(
+            name=name,
+            operator="*" if name == "product" else "+",
+            quant_var=ast.data,
+            range_func=range_func,
+            body_func=body_func,
+        )
+
+        minimum = get_value_from_ast(ast.children[0], min, float("inf"))
+        maximum = get_value_from_ast(ast.children[0], max, float("-inf"))
+        return f"({name}{self.num} {minimum} {maximum})"
+
+    def _operator_to_smt(self, op: Token) -> str:
+        assert op.kind == Kind.OPERATOR, f"expected operator but found {op!r}"
+        maping = {
+            "&&": "and",
+            "||": "or",
+            "/": "div",
+            "%": "mod",
+            "!": "not",
+            "==": "=",
+        }
+        return maping.get(op.value, op.value)
+
+    def _translate(self, ast: AST, depth: int, max_depth: int):
+        if depth > max_depth:
+            return ""
+        if depth == max_depth:
+            return f"[[{ast.flat()}]]"
+
+        if not ast.children:
+            return f"{ast.token}"
+        if is_quantifier(ast.token):
+            if ast.token.value[1:] == "num_of":  # convert num_of to a sum
+                return self._translate(
+                    AST(
+                        Token(Kind.SYMBOL, "\\sum"),
+                        (
+                            AST(Operator("&&"), ast.children),
+                            AST(Token(Kind.NUMBER, "1"), None),
+                        ),
+                        data=ast.data,
+                    ),
+                    depth,
+                    max_depth - 1,
+                )
+            return self._translate_quantifier(ast)
+
+        return f"({self._operator_to_smt(ast.token)} {self._translate(ast.children[0], depth+1, max_depth)} {self._translate(ast.children[1], depth+1, max_depth)})"
+
+    def _translate_steps(self, ast: AST, start_num: int = 0) -> List[str]:
+        out = []
+        for i in range(ast.depth() + 1):
+            self.num = start_num
+            out.append(self._translate(ast, 0, i))
+        return out
+
+    def translate(self, ast: AST) -> str:
+        body = "\n".join(self._translate_steps(ast))
+        return f"""{self.quants}\n\nUSAGE TRANSLATIONS\n{body}"""
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Tool to build SMT Translations.",
@@ -316,6 +455,9 @@ if __name__ == "__main__":
     )
     parser.add_argument("-f", "--file", help="input JML file, default stdin")
     parser.add_argument("-o", "--out", help="output SMT file, default stdout")
+    parser.add_argument(
+        "-s", "--steps", action="store_true", help="output translation steps"
+    )
 
     args = parser.parse_args()
 
@@ -328,7 +470,7 @@ if __name__ == "__main__":
     tokens = list(lex(jml))
     expression = parse_expression(tokens)
 
-    smt = Translator().translate(expression)
+    smt = (TranslatorWithSteps() if args.steps else Translator()).translate(expression)
     if args.out:
         with open(args.out, "w") as f:
             f.write(smt)
