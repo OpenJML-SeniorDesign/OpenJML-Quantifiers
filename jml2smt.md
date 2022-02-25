@@ -16,7 +16,7 @@ Every instance of a JML generalized quantifiers have two SMT translation parts: 
 Declaration:
 
 ```smt
-[[(\sum T x; Range; Body)]] =>
+[[|(\sum T x; Range; Body)|]] =>
    (define-fun-rec sum_N
       ((lo T) (x T)) Int
       (ite (< x lo)
@@ -47,9 +47,9 @@ Usage:
 num_of is translated to a sum expression
 
 ```smt
-[[(\num_of T x; Range; Body)]]
+[[|(\num_of T x; Range; Body)|]]
    =>
-      [[(\sum T x; Range && Body; 1)]]
+      [[|(\sum T x; Range && Body; 1)|]]
 ```
 
 ### product
@@ -57,7 +57,7 @@ num_of is translated to a sum expression
 Declaration:
 
 ```smt
-[[(\product T x; Range; Body)]] =>
+[[|(\product T x; Range; Body)|]] =>
    (define-fun-rec product_N
       ((lo T) (x T)) Int
       (ite (< x lo)
@@ -105,7 +105,7 @@ Usage:
 `python python/parser.py -s`
 
 ```smt
-Input: (\sum int x; 0 <= x && x < 5; x) == 1 + 2 + 3 + 4;
+; Input: (\sum int x; 0 <= x && x < 5; x) == 1 + 2 + 3 + 4;
 
 ; DECLARATION TRANSLATION OF SUM
     (define-fun-rec sum1
@@ -180,8 +180,8 @@ Input: (\sum int x; 0 <= x && x < 5; x) == 1 + 2 + 3 + 4;
 
 
 ; USAGE TRANSLATIONS
-[[(\sum x; 0 <= x && x < 5; x) == 1 + 2 + 3 + 4]]
-(= [[(\sum x; 0 <= x && x < 5; x)]] [[1 + 2 + 3 + 4]])
+[[|(\sum x; 0 <= x && x < 5; x)| == 1 + 2 + 3 + 4]]
+(= [[|(\sum x; 0 <= x && x < 5; x)|]] [[1 + 2 + 3 + 4]])
 (= (sum1 0 5) (+ [[1 + 2 + 3]] [[4]]))
 (= (sum0 0 5) (+ (+ [[1 + 2]] [[3]]) 4))
 (= (sum0 0 5) (+ (+ (+ [[1]] [[2]]) 3) 4))
