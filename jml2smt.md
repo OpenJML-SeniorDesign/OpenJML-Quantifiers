@@ -61,7 +61,7 @@ Declaration:
    (define-fun-rec product_N
       ((lo T) (x T)) Int
       (ite (< x lo)
-         0
+         1
          (*
             (product_N lo (- x 1))
             (ite [[Range]]

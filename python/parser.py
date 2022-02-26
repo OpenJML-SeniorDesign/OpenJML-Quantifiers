@@ -254,19 +254,25 @@ class Translator:
         self.num = 0
 
     def _define_quantifier(
-        self, name: str, operator: str, quant_var: str, range_func: str, body_func: str
+        self,
+        name: str,
+        operator: str,
+        quant_var: str,
+        range_func: str,
+        body_func: str,
+        base_case: int,
     ):
         self.num += 1
         self.header += f"""
 (define-fun-rec {name}{self.num}
     ((lo Int) ({quant_var} Int)) Int
     (ite (< {quant_var} lo)
-        0
+        {base_case}
         ({operator}
             ({name}{self.num} lo (- {quant_var} 1))
             (ite {range_func}
                 {body_func}
-                0
+                {base_case}
             )
         )
     )
@@ -291,6 +297,7 @@ class Translator:
             quant_var=ast.data,
             range_func=range_func,
             body_func=body_func,
+            base_case=1 if name == "product" else 0,
         )
 
         minimum = get_value_from_ast(ast.children[0], min, float("inf"))
@@ -337,24 +344,26 @@ class TranslatorWithSteps:
         quant_var: str,
         range_func: List[str],
         body_func: List[str],
+        base_case: int,
     ):
         """Create quantifier declaration translations for range and body expressions"""
+        self.num += 1
         if f"{name}{self.num}" in self.quants_handled:
             return
         self.quants_handled.add(f"{name}{self.num}")
-        self.num += 1
+
         self.quants += f"\nDECLARATION TRANSLATION OF {name.upper()}"
         for rf in range_func:
             self.quants += f"""
     (define-fun-rec {name}{self.num}
         ((lo Int) ({quant_var} Int)) Int
         (ite (< {quant_var} lo)
-            0
+            {base_case}
             ({operator}
                 ({name}{self.num} lo (- {quant_var} 1))
                 (ite {rf}
                     {body_func[0]}
-                    0
+                    {base_case}
                 )
             )
         )
@@ -365,12 +374,12 @@ class TranslatorWithSteps:
     (define-fun-rec {name}{self.num}
         ((lo Int) ({quant_var} Int)) Int
         (ite (< {quant_var} lo)
-            0
+            {base_case}
             ({operator}
                 ({name}{self.num} lo (- {quant_var} 1))
                 (ite {range_func[-1]}
                     {bf}
-                    0
+                    {base_case}
                 )
             )
         )
@@ -392,6 +401,7 @@ class TranslatorWithSteps:
             quant_var=ast.data,
             range_func=range_func,
             body_func=body_func,
+            base_case=1 if name == "product" else 0,
         )
 
         minimum = get_value_from_ast(ast.children[0], min, float("inf"))
