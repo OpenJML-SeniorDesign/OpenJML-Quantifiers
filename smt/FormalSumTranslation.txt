@@ -1,0 +1,41 @@
+--------------------------------------------------------------------------------------------------------
+[[(\sum T x; lo <= x && x < hi; Body)]] =>
+
+    (declare-sort array 0)
+
+    (declare-fun getElem (array Int) T)
+    
+Filter function must have a fresh name.
+    (define-fun {filter} (n T) Bool (and (<= lo n) (> hi n)))
+
+Sum function must have a fresh name.
+    (define-fun-rec {sum} ((lo Int) (hi Int) (aa array)) T (ite (< hi lo) 0 (+ (sum lo (- hi 1) aa) (ite ({filter} hi) (getElem aa hi) 0))))
+
+Create an array with fresh name.
+    (declare-fun {FreshArr} () array)
+    (assert (forall ((x Int)) (= (getElem arr x) [Body])))
+
+CalcSumInJava is the function that we are comparing the sum to generated from the Java code.
+    (assert (not (forall ((k Int)) (=> (>= k 0) (=> (= ({sum} 0 k {FreshArr}) ({CalcSumInJava} k {FreshArr})) (= (sum 0 (+ k 1) {FreshArr}) ({CalcSumInJava} (+ k 1) {FreshArr})))))))
+--------------------------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------------------------------
+[[(\sum T x; FilterFunc; Body)]] =>
+
+    (declare-sort array 0)
+
+    (declare-fun getElem (array Int) T)
+    
+Filter function must have a fresh name.
+    (define-fun {filter} (n T) Bool [FilterFunc])
+
+Sum function must have a fresh name.
+    (define-fun-rec {sum} ((lo Int) (hi Int) (aa array)) T (ite (< hi lo) 0 (+ (sum lo (- hi 1) aa) (ite ({filter} hi) (getElem aa hi) 0))))
+
+Create an array with fresh name.
+    (declare-fun {FreshArr} () array)
+    (assert (forall ((x Int)) (= (getElem arr x) [Body])))
+
+CalcSumInJava is the function that we are comparing the sum to generated from the Java code.
+    (assert (not (forall ((k Int)) (=> (>= k 0) (=> (= ({sum} 0 k {FreshArr}) ({CalcSumInJava} k {FreshArr})) (= (sum 0 (+ k 1) {FreshArr}) ({CalcSumInJava} (+ k 1) {FreshArr})))))))
+--------------------------------------------------------------------------------------------------------
