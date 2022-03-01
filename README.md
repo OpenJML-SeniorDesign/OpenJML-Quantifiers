@@ -2,6 +2,35 @@
 
 JML Reference Guide: https://www.cs.ucf.edu/~leavens/JML/jmlrefman/jmlrefman_toc.html
 
+## OpenJML
+
+To run our version of OpenJML:
+
+First set up [the development enviroment](https://github.com/OpenJML/OpenJML/wiki/OpenJML-Development-Environment-Setup):
+
+```bash
+mkdir OpenJML && cd OpenJML
+git clone -b master-module https://github.com/OpenJML-SeniorDesign/OpenJML.git
+git clone -b master-module https://github.com/OpenJML/Specs.git
+git clone -b master https://github.com/OpenJML/Solvers.git
+git clone -b master https://github.com/OpenJML/JMLAnnotations.git
+```
+
+Then, do a [build](https://github.com/OpenJML/OpenJML/wiki/Building-OpenJML):
+
+```bash
+cd OpenJML/OpenJDKModule
+bash ./configure
+make openjml
+make release
+```
+
+Then, to use OpenJML
+
+```bash
+./OpenJML/OpenJDKModule/release-temp/openjml -esc --prover=z3_4_7 <filename>
+```
+
 ## SMT Solving
 
 Z3 Solver:
