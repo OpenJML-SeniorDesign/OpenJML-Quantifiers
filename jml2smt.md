@@ -2,12 +2,13 @@
 
 In the following,
 
--   `x` is a Java variable name
--   `T` is a Java numeric type
+-   `T` is a Java integral type (int, long, etc)
+-   `K` is a Java numeric type
+-   `x` is a Java variable name of type `T`
 -   `E`, `E1`, and `E2` are expressions
--   [[`E`]] is the translation function of `E` assuming `E` is type checked.
--   Range is an expression that may refer to `x`
--   Body is an expression that may refer to `x`
+-   [[`E`]] is the translation function of `E` assuming `E` is type checked
+-   Range is an expression that may refer to `x` and returns type `boolean`
+-   Body is an expression that may refer to `x` and returns type `K`
 
 Every instance of a JML generalized quantifiers have two SMT translation parts: a declaration and a usage.
 
@@ -17,11 +18,11 @@ Declaration:
 
 ```smt
 [[|(\sum T x; Range; Body)|]] =>
-    (define-fun Range_N (x Int) Bool [[Range]])
-    (define-fun Body_N (x Int) Int [[Body]])
+    (define-fun Range_N (x T) Bool [[Range]])
+    (define-fun Body_N (x T) K [[Body]])
 
     (define-fun-rec sum_N
-        ((lo T) (hi T)) Int
+        ((lo T) (hi T)) K
         (ite (< hi lo)
             0
             (+
@@ -35,7 +36,7 @@ Declaration:
     )
 ```
 
-where `sum_N` is a fresh identifier.
+where `sum_N`, `range_N`, and `Body_N` are fresh identifiers.
 
 Usage:
 
@@ -61,11 +62,11 @@ Declaration:
 
 ```smt
 [[|(\product T x; Range; Body)|]] =>
-    (define-fun Range_N (x Int) Bool [[Range]])
-    (define-fun Body_N (x Int) Int [[Body]])
+    (define-fun Range_N (x T) Bool [[Range]])
+    (define-fun Body_N (x T) K [[Body]])
 
     (define-fun-rec product_N
-        ((lo T) (hi T)) Int
+        ((lo T) (hi T)) K
         (ite (< hi lo)
             1
             (*
@@ -79,7 +80,7 @@ Declaration:
     )
 ```
 
-where `product_N` is a fresh identifier.
+where `product_N`, `range_N`, and `Body_N` are fresh identifiers.
 
 Usage:
 
