@@ -17,19 +17,22 @@ Declaration:
 
 ```smt
 [[|(\sum T x; Range; Body)|]] =>
-   (define-fun-rec sum_N
-      ((lo T) (x T)) Int
-      (ite (< x lo)
-         0
-         (+
-            (sum_N lo (- x 1))
-            (ite [[Range]]
-                [[Body]]
-                0
+    (define-fun Range_N (x Int) Bool [[Range]])
+    (define-fun Body_N (x Int) Int [[Body]])
+
+    (define-fun-rec sum_N
+        ((lo T) (hi T)) Int
+        (ite (< hi lo)
+            0
+            (+
+                (sum_N lo (- hi 1))
+                (ite (Range_N hi)
+                    (Body_N hi)
+                    0
+                )
             )
-         )
-      )
-   )
+        )
+    )
 ```
 
 where `sum_N` is a fresh identifier.
@@ -58,19 +61,22 @@ Declaration:
 
 ```smt
 [[|(\product T x; Range; Body)|]] =>
-   (define-fun-rec product_N
-      ((lo T) (x T)) Int
-      (ite (< x lo)
-         1
-         (*
-            (product_N lo (- x 1))
-            (ite [[Range]]
-                [[Body]]
-                1
+    (define-fun Range_N (x Int) Bool [[Range]])
+    (define-fun Body_N (x Int) Int [[Body]])
+
+    (define-fun-rec product_N
+        ((lo T) (hi T)) Int
+        (ite (< hi lo)
+            1
+            (*
+                (sum_N lo (- hi 1))
+                (ite (Range_N hi)
+                    (Body_N hi)
+                    1
+                )
             )
-         )
-      )
-   )
+        )
+    )
 ```
 
 where `product_N` is a fresh identifier.
@@ -82,6 +88,19 @@ Usage:
 (product_N T.min, T.max) iff T has a minimum and maximum value
 (1)                      otherwise, warn user
 ```
+
+## multiple quantified variables
+
+A JML quantifier expression with multiple variables, is syntactic sugar for nesting quantifiers.
+
+```smt
+[[|(Q T x1, x2, ..., xn; Range; Body)|]] =>
+   [[(Q T x1; ; [[(Q T x2, ..., xn; Range; Body)]])]]
+
+[[|(Q T x; ; Body)|]] => [[|(Q T x; true; Body)|]]
+```
+
+Where `Q` is a quantifier name (`\sum`, `\product`, `\num_of`, `\min`, or `\max`).
 
 ## general expressions
 
