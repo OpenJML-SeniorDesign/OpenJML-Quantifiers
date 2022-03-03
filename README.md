@@ -18,9 +18,16 @@ git clone -b master https://github.com/OpenJML/JMLAnnotations.git
 
 Then, do a [build](https://github.com/OpenJML/OpenJML/wiki/Building-OpenJML):
 
+## Building JDK
+If you need any help building the JDK refer to these links:
+https://openjdk.java.net/groups/build/doc/building.html
+https://metebalci.com/blog/custom-openjdk-10-builds-on-ubuntu-16.04/
+
 ```bash
 cd OpenJML/OpenJDKModule
 bash ./configure
+# Use the line below for WSL
+# bash ./configure --with-boot-jdk=/usr/lib/jvm/java-16-openjdk-amd64 --disable-warnings-as-errors --build=x86_64-unknown-linux-gnu --host=x86_64-unknown-linux-gnu
 make openjml
 make release
 ```
