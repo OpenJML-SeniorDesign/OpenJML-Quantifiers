@@ -120,7 +120,61 @@ Where `Q` is a quantifier name (`\sum`, `\product`, `\num_of`, `\min`, or `\max`
 [[E ? E1 : E2]] => (ite [[E]] [[E1]] [[E2]])
 ```
 
-## examples
+## bounds extracting
+
+To initiate a quantifier call, the low and high bounds must be extracted from the range expression.
+
+A minimal range must follow this pattern: `lo < i < hi`. The base implementation is from the [Runtime Assertion Checker](https://github.com/OpenJML/OpenJML/blob/master-module/OpenJDKModule/src/jdk.compiler/share/classes/org/jmlspecs/openjml/esc/JmlAssertionAdder.java#L17948). Our implementation can be found in the [JmlBoundsExtractor](https://github.com/OpenJML-SeniorDesign/OpenJML/blob/master-module/OpenJDKModule/src/jdk.compiler/share/classes/org/jmlspecs/openjml/esc/JmlBoundsExtractor.java#L64).
+
+The following algorithm will be used:
+
+```py
+def extract(expression: Tree, isRoot: bool): ...
+
+if isRoot and expression is not a binary AND or OR: warn('not supported')
+
+# consider range: E1 && E2
+if E1 is not binary: # E1 MUST be a boolean by the typechecker
+    if E1 is True:   # the bounds are whatever the bounds of E2 are
+    if E1 is False:  # the range is ALWAYS false, and lo = hi = 0 will suffice
+
+if E2 is not binary: # E2 MUST be a boolean by the typechecker
+    if E2 is True:   # the bounds are whatever the bounds of E1 are, if E1 was true, warn('not supported')
+    if E2 is False:  # the range is ALWAYS false, and lo = hi = 0 will suffice
+
+if expression is binary AND or OR:
+    b1 = extract(lhs, False)
+    b2 = extract(rhs, False)
+    lo = (
+        b1.lo              # if b1.lo not in decls and b2.lo in decls
+        b2.lo              # if b1.lo in decls and b2.lo not in decls
+        min(b1.lo, b2.lo)  # if b1.lo not in decls and b2.lo not in decls
+        decls[0]           # otherwise
+    )
+    
+    hi = (
+        b1.hi              # if b1.hi not in decls and b2.hi in decls
+        b2.hi              # if b1.hi in decls and b2.hi not in decls
+        max(b1.hi, b2.hi)  # if b1.hi not in decls and b2.hi not in decls
+        decls[0]           # otherwise
+    )
+    
+    return Bounds(lo=lo, hi=hi)
+
+if E is a binary comparison expression (<, <=, >, >=):
+    # "orient" the comparison such that the lhs is small and rhs is large relative to each other
+    return Bounds(lo=lhs, hi=rhs)
+
+return Bounds(decls[0], decls[0]) or Bounds(lo=decls[0].type.MAX, hi=decls[0].type.MIN)
+```
+
+An expression being _in_ the decls list, means that the expression includes a quantified variable somewhere.
+
+For instance let the decls be: `int i`, then, `i + 4` would be in decls, while `j + 4` is not. 
+
+Additionally, if an expression is the parent of a binary leaf node and it is an OR expression, the user should recieve a warning. For example, `i < 0 || 4 < i`, should throw a warning because the range is functionally infinite. If there is no AND expression anywhere in the range, the range necessarily will be either 0 or infinite.
+
+## example
 
 `python python/parser.py -s`
 
